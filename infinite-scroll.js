@@ -20,8 +20,61 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
         this.prevStart = 0;
         this.prevEnd = 0;
         this.boundScrollListener = this.scrollListener.bind(this);
-        this.container.style.height = this.manager.getOffsetByIndex(this.data.length) + 'px';
+        this.loading = false;
+        this.cursor = options.initialCursor;
+        this.dataLoader = options.dataLoader;
+        this.context = options.initialContext || [];
+        this.end = false;
+        this.updateContainerHeight();
         if (!options.noStart) this.start();
+      }
+    },
+    setContext: {
+      value: function (context, initialData, initialCursor) {
+        if (this.context.length == context.length && this.context.every(function (_, i, a) {
+          return a[i] === context[i];
+        })) {
+          return false;
+        }
+        var prevData = this.data;
+        this.context = context;
+        this.data = initialData || [];
+        this.cursor = initialCursor;
+        this.loading = false;
+        this.updateContainerHeight();
+        this.scrollListener();
+        this.end = false;
+        return prevData;
+      }
+    },
+    updateContainerHeight: {
+      value: function () {
+        this.container.style.height = this.manager.getOffsetByIndex(this.data.length) + 'px';
+      }
+    },
+    loadData: {
+      value: function (wantCount) {
+        if (this.loading) return false;
+        this.loading = true;
+        var self = this;
+        var context = self.context;
+        this.dataLoader(function addData(data) {
+          if (self.context != context) {
+            // aborted
+            return;
+          }
+          self.loading = false;
+          if (!data) {
+            return;
+          }
+          if (data.end) {
+            self.end = true;
+          }
+          self.cursor = data.cursor;
+          Array.prototype.push.apply(self.data, data.data);
+          self.updateContainerHeight();
+          self.scrollListener();
+        }, this.cursor, context, wantCount);
       }
     },
     acquireElement: {
@@ -54,9 +107,10 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
       value: function () {
         var containerRect = this.container.getBoundingClientRect();
         var start = this.manager.getMinIndexByOffset(-containerRect.top - this.spare);
-        var end = this.manager.getMaxIndexByOffset(window.innerHeight - containerRect.top + this.spare);
+        var screenEnd = this.manager.getMaxIndexByOffset(window.innerHeight - containerRect.top + this.spare);
         start = isNaN(start) ? 0 : Math.max(0, start);
-        end = isNaN(end) ? this.data.length - 1 : Math.min(this.data.length - 1, end);
+        screenEnd = isNaN(screenEnd) ? undefined : screenEnd;
+        var end = screenEnd === undefined ? this.data.length - 1 : Math.min(this.data.length - 1, screenEnd);
         for (var i = this.prevStart; i < start && this.renderedElements[i]; i++) {
           this.renderedElements[i].parentElement.removeChild(this.renderedElements[i]);
           this.releaseElement(this.renderedElements[i]);
@@ -76,6 +130,9 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
             this.renderer.render(this.renderedElements[i], this.data[i], i);
             this.container.insertBefore(this.renderedElements[i], null);
           }
+        }
+        if (screenEnd >= this.data.length - 1 && !this.end) {
+          this.loadData(screenEnd - this.data.length + 1);
         }
       }
     },

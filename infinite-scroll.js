@@ -41,9 +41,9 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
         this.data = initialData || [];
         this.cursor = initialCursor;
         this.loading = false;
+        this.end = false;
         this.updateContainerHeight();
         this.scrollListener();
-        this.end = false;
         return prevData;
       }
     },
@@ -112,6 +112,7 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
     start: {
       value: function () {
         if (!this.stopped) return;
+        this.stopped = false;
         this.scrollListener();
         window.addEventListener('scroll', this.boundScrollListener);
       }
@@ -119,6 +120,7 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
     stop: {
       value: function () {
         if (this.stopped) return;
+        this.stopped = true;
         window.removeEventListener('scroll', this.boundScrollListener);
       }
     },

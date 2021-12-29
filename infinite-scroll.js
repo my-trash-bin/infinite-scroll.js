@@ -16,7 +16,7 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
         this.spare = options.spare || 0;
         this.data = options.initialData || [];
         this.elementPool = [];
-        this.renderedElements = {};
+        this.renderedElements = Object.create(null);
         this.prevStart = 0;
         this.prevEnd = 0;
         this.boundScrollListener = this.scrollListener.bind(this);
@@ -49,7 +49,7 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
     },
     updateContainerHeight: {
       value: function () {
-        this.container.style.height = this.manager.getOffsetByIndex(this.data.length) + 'px';
+        this.container.style.height = (this.data.length && this.manager.getMaxOffsetByIndex(this.data.length - 1) || 0) + 'px';
       }
     },
     loadData: {
@@ -90,6 +90,25 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
         this.elementPool.push(element);
       }
     },
+    setManager: {
+      value: function (manager) {
+        this.manager = manager;
+        this.scrollListener(true);
+      }
+    },
+    setRenderer: {
+      value: function (renderer) {
+        this.renderer = renderer;
+        this.scrollListener(true);
+      }
+    },
+    setManagerAndRenderer: {
+      value: function (manager, renderer) {
+        this.manager = manager;
+        this.renderer = renderer;
+        this.scrollListener(true);
+      }
+    },
     start: {
       value: function () {
         if (!this.stopped) return;
@@ -104,7 +123,7 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
       }
     },
     scrollListener: {
-      value: function () {
+      value: function (rerender) {
         var containerRect = this.container.getBoundingClientRect();
         var start = this.manager.getMinIndexByOffset(-containerRect.top - this.spare);
         var screenEnd = this.manager.getMaxIndexByOffset(window.innerHeight - containerRect.top + this.spare);
@@ -121,13 +140,21 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
           this.releaseElement(this.renderedElements[i]);
           delete this.renderedElements[i];
         }
+        if (rerender) {
+          for (var i in this.renderedElements) {
+            this.renderer.updateOffset(this.renderedElements[i], this.manager.getMinOffsetByIndex(i), this.manager.getHeightByIndex(i), i);
+            this.renderer.clean(this.renderedElements[i]);
+            this.renderer.render(this.renderedElements[i], this.data[i], i, this.context);
+          }
+          this.updateContainerHeight();
+        }
         this.prevStart = start;
         this.prevEnd = end;
         for (var i = start; i <= end; i++) {
           if (!this.renderedElements[i]) {
             this.renderedElements[i] = this.acquireElement();
-            this.renderer.updateOffset(this.renderedElements[i], this.manager.getOffsetByIndex(i));
-            this.renderer.render(this.renderedElements[i], this.data[i], i);
+            this.renderer.updateOffset(this.renderedElements[i], this.manager.getMinOffsetByIndex(i), this.manager.getHeightByIndex(i), i);
+            this.renderer.render(this.renderedElements[i], this.data[i], i, this.context);
             this.container.insertBefore(this.renderedElements[i], null);
           }
         }
@@ -182,24 +209,29 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
               var element = document.createElement('div');
               element.style.position = 'absolute';
               return element;
-            }
+            },
+            enumerable: true
           },
           clean: {
             value: function (element) {
               while (element.firstChild) {
                 element.removeChild(element.firstChild);
               }
-            }
+            },
+            enumerable: true
           },
           updateOffset: {
-            value: function (element, offset) {
+            value: function (element, offset, height, _index) {
               element.style.top = offset + 'px';
-            }
+              element.style.height = height + 'px';
+            },
+            enumerable: true
           },
           render: {
-            value: function (element, item, index) {
+            value: function (element, item, _index) {
               element.insertBefore(item, null);
-            }
+            },
+            enumerable: true
           }
         });
         return renderer;
@@ -212,8 +244,11 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
           getHeightByIndex: function (_index) {
             return height;
           },
-          getOffsetByIndex: function (index) {
+          getMinOffsetByIndex: function (index) {
             return index * height;
+          },
+          getMaxOffsetByIndex: function (index) {
+            return (index + 1) * height;
           },
           getMinIndexByOffset: function (offset) {
             return Math.floor(offset / height - spareCount);

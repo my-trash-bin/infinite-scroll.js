@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Infinite Scroll Test</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script src="./script.js"></script>
+    <script src="./infinite-scroll.js"></script>
+  </head>
+  <body>
+    <header>
+      HEADER
+    </header>
+    <main>
+      MAIN
+      <select id="infinite-scroll-test-manager">
+        <option selected value="row">List</option>
+        <option value="col-3">Table</option>
+      </select>
+      <select id="infinite-scroll-test-context">
+        <option selected value="Hello">Hello</option>
+        <option value="Bye">Bye</option>
+      </select>
+      <input id="infinite-scroll-test-max" type="number" value="123" />
+      <section id="infinite-scroll-test-container" style="position: relative;"></section>
+    </main>
+    <footer>
+      FOOTER
+    </footer>
+  </body>
+</html>

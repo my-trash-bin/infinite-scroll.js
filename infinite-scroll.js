@@ -19,7 +19,7 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
         this.renderedElements = Object.create(null);
         this.prevStart = 0;
         this.prevEnd = 0;
-        this.boundScrollListener = this.scrollListener.bind(this);
+        this.scrollListener = (function () { this.render(); }).bind(this);
         this.loading = false;
         this.cursor = options.initialCursor;
         this.dataLoader = options.dataLoader;
@@ -43,7 +43,7 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
         this.loading = false;
         this.end = false;
         this.updateContainerHeight();
-        this.scrollListener();
+        this.render();
         return prevData;
       }
     },
@@ -73,7 +73,7 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
           self.cursor = data.cursor;
           Array.prototype.push.apply(self.data, data.data);
           self.updateContainerHeight();
-          self.scrollListener();
+          self.render();
         }, this.cursor, context, wantCount);
       }
     },
@@ -93,39 +93,39 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
     setManager: {
       value: function (manager) {
         this.manager = manager;
-        this.scrollListener(true);
+        this.render(true);
       }
     },
     setRenderer: {
       value: function (renderer) {
         this.renderer = renderer;
-        this.scrollListener(true);
+        this.render(true);
       }
     },
     setManagerAndRenderer: {
       value: function (manager, renderer) {
         this.manager = manager;
         this.renderer = renderer;
-        this.scrollListener(true);
+        this.render(true);
       }
     },
     start: {
       value: function () {
         if (!this.stopped) return;
         this.stopped = false;
-        this.scrollListener();
-        window.addEventListener('scroll', this.boundScrollListener);
+        this.render();
+        window.addEventListener('scroll', this.scrollListener);
       }
     },
     stop: {
       value: function () {
         if (this.stopped) return;
         this.stopped = true;
-        window.removeEventListener('scroll', this.boundScrollListener);
+        window.removeEventListener('scroll', this.scrollListener);
       }
     },
-    scrollListener: {
-      value: function (rerender) {
+    render: {
+      value: function (force) {
         var containerRect = this.container.getBoundingClientRect();
         var start = this.manager.getMinIndexByOffset(-containerRect.top - this.spare);
         var screenEnd = this.manager.getMaxIndexByOffset(window.innerHeight - containerRect.top + this.spare);
@@ -142,10 +142,10 @@ var InfiniteScroll = window.InfiniteScroll = (function () {
           this.releaseElement(this.renderedElements[i]);
           delete this.renderedElements[i];
         }
-        if (rerender) {
+        if (force) {
           for (var i in this.renderedElements) {
-            this.renderer.updateOffset(this.renderedElements[i], this.manager.getMinOffsetByIndex(i), this.manager.getHeightByIndex(i), i);
             this.renderer.clean(this.renderedElements[i]);
+            this.renderer.updateOffset(this.renderedElements[i], this.manager.getMinOffsetByIndex(i), this.manager.getHeightByIndex(i), i);
             this.renderer.render(this.renderedElements[i], this.data[i], i, this.context);
           }
           this.updateContainerHeight();

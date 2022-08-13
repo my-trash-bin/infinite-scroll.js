@@ -1,0 +1,22 @@
+{
+  "name": "infinite-scroll",
+  "version": "1.0.0",
+  "description": "infinite scroll test",
+  "scripts": {
+    "start": "vite"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/my-trash-bin/infinite-scroll.js.git"
+  },
+  "keywords": [],
+  "author": "Juyeong Maing <mjy9088@naver.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/my-trash-bin/infinite-scroll.js/issues"
+  },
+  "homepage": "https://github.com/my-trash-bin/infinite-scroll.js#readme",
+  "dependencies": {
+    "vite": "^3.0.7"
+  }
+}

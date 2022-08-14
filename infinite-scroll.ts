@@ -1,8 +1,8 @@
-export interface InfiniteScrollRenderer<T, C> {
+export interface InfiniteScrollRenderer<Data, Context extends any[]> {
   create(): HTMLElement;
   clean(element: HTMLElement): void
   updateOffset(element: HTMLElement, offset: number, height: number, index: number): void;
-  render(element: HTMLElement, data: T, index: number, context: C[]): void;
+  render(element: HTMLElement, data: Data, index: number, context: Context | undefined): void;
 }
 
 export interface InfiniteScrollManager {
@@ -11,41 +11,41 @@ export interface InfiniteScrollManager {
   getMaxOffsetByIndex(index: number): number;
   getMinIndexByOffset(offset: number): number;
   getMaxIndexByOffset(offset: number): number;
-};
+}
 
-export interface InfiniteScrollOptions<T, C> {
+export interface InfiniteScrollOptions<Data, Context extends any[], Cursor> {
   container: HTMLElement;
-  renderer: InfiniteScrollRenderer<T, C>;
+  renderer: InfiniteScrollRenderer<Data, Context>;
   manager: InfiniteScrollManager;
   spare?: number;
-  initialData?: T[];
-  initialCursor;
-  dataLoader;
-  initialContext: C[];
+  initialData?: Data[];
+  initialCursor: Cursor;
+  dataLoader: (onLoad: (result: { data: Data[], cursor: Cursor, end: boolean }) => void, cursor: Cursor, context: Context, wantCount: number) => void;
+  initialContext: Context;
   noStart?: boolean;
 }
 
-export class InfiniteScroll<T, C> {
+export class InfiniteScroll<Data, Context extends any[], Cursor> {
   stopped: boolean;
   container: HTMLElement;
-  renderer: InfiniteScrollRenderer<T, C>;
+  renderer: InfiniteScrollRenderer<Data, Context>;
   manager: InfiniteScrollManager;
   spare: number;
-  data: T[];
+  data: Data[];
   elementPool: HTMLElement[];
   renderedElements: HTMLElement[];
   prevStart: number;
   prevEnd: number;
   scrollListener;
   loading: boolean;
-  cursor;
-  dataLoader;
-  context: C[];
+  cursor: Cursor;
+  dataLoader: (onLoad: (result: { data: Data[], cursor: Cursor, end: boolean }) => void, cursor: Cursor, context: Context, wantCount: number) => void;
+  context: Context;
   end: boolean;
 
   static instanceKey = Symbol('InfiniteScroll');
 
-  constructor(options: InfiniteScrollOptions<T, C>) {
+  constructor(options: InfiniteScrollOptions<Data, Context, Cursor>) {
     this.stopped = true;
     this.container = options.container;
     this.renderer = options.renderer;
@@ -66,10 +66,10 @@ export class InfiniteScroll<T, C> {
     if (!options.noStart) this.start();
   }
 
-  setContext(context: C[], initialData: T[], initialCursor): void {
-    if (this.context.length == context.length && this.context.every((_, i, a) => a[i] === context[i])) {
-      return false;
-    }
+  setContext(context: Context, initialData: Data[], initialCursor: Cursor): Data[] | undefined {
+    if (this.context.length == context.length &&
+      this.context.every((_, i, a) => a[i] === context[i]))
+        return undefined;
     const prevData = this.data;
     this.context = context;
     this.data = initialData || [];
@@ -88,24 +88,23 @@ export class InfiniteScroll<T, C> {
   loadData(wantCount: number): void {
     if (this.loading) return;
     this.loading = true;
-    var self = this;
-    var context = self.context;
-    this.dataLoader(function addData(data) {
-      if (self.context != context) {
+    const context = this.context;
+    this.dataLoader((data) => {
+      if (this.context != context) {
         // aborted
         return;
       }
-      self.loading = false;
+      this.loading = false;
       if (!data) {
         return;
       }
       if (data.end) {
-        self.end = true;
+        this.end = true;
       }
-      self.cursor = data.cursor;
-      Array.prototype.push.apply(self.data, data.data);
-      self.updateContainerHeight();
-      self.render();
+      this.cursor = data.cursor;
+      this.data.push(...data.data);
+      this.updateContainerHeight();
+      this.render();
     }, this.cursor, context, wantCount);
   }
 
@@ -125,12 +124,12 @@ export class InfiniteScroll<T, C> {
     this.render(true);
   }
 
-  setRenderer(renderer: InfiniteScrollRenderer<T, C>): void {
+  setRenderer(renderer: InfiniteScrollRenderer<Data, Context>): void {
     this.renderer = renderer;
     this.render(true);
   }
 
-  setManagerAndRenderer(manager: InfiniteScrollManager, renderer: InfiniteScrollRenderer<T, C>): void {
+  setManagerAndRenderer(manager: InfiniteScrollManager, renderer: InfiniteScrollRenderer<Data, Context>): void {
     this.manager = manager;
     this.renderer = renderer;
     this.render(true);
@@ -194,7 +193,7 @@ export class InfiniteScroll<T, C> {
     return !this.stopped;
   }
 
-  set running(value: boolean): void {
+  set running(value: boolean) {
     if (value) {
       this.start();
     } else {
@@ -202,21 +201,21 @@ export class InfiniteScroll<T, C> {
     }
   }
 
-  static init<T, C>(options: InfiniteScrollOptions<T, C>) {
+  static init<Data, Context extends any[], Cursor>(options: InfiniteScrollOptions<Data, Context, Cursor>) {
     Object.defineProperty(options.container, InfiniteScroll.instanceKey, {
       value: new InfiniteScroll(options)
     });
   }
 
-  static getInstance<T, C>(node: HTMLElement): InfiniteScroll<T, C> | undefined {
+  static getInstance<Data, Context extends any[], Cursor>(node: HTMLElement): InfiniteScroll<Data, Context, Cursor> | undefined {
     for (let current: HTMLElement | null = node; current; current = current.parentElement) {
       if (current[InfiniteScroll.instanceKey as unknown as keyof HTMLElement]) {
-        return current[InfiniteScroll.instanceKey as unknown as keyof HTMLElement] as unknown as InfiniteScroll<T, C>;
+        return current[InfiniteScroll.instanceKey as unknown as keyof HTMLElement] as unknown as InfiniteScroll<Data, Context, Cursor>;
       }
     }
   }
 
-  static defaultRenderer: InfiniteScrollRenderer<HTMLElement, any> = {
+  static defaultRenderer: InfiniteScrollRenderer<Node, any> = {
     create: () => {
       const element = document.createElement('div');
       element.style.position = 'absolute';

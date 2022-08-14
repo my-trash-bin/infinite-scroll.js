@@ -1,32 +1,37 @@
-import { InfiniteScroll } from "./infinite-scroll";
+import { InfiniteScroll, InfiniteScrollManager, InfiniteScrollRenderer } from "./infinite-scroll";
+
+interface Data {
+  index: number;
+  text: string;
+}
 
 window.addEventListener('DOMContentLoaded', function () {
-  var container = document.getElementById('infinite-scroll-test-container');
-  var selectManager = document.getElementById('infinite-scroll-test-manager');
-  var selectContext = document.getElementById('infinite-scroll-test-context');
-  var inputMax = document.getElementById('infinite-scroll-test-max');
+  const container = document.getElementById('infinite-scroll-test-container')!;
+  const selectManager = document.getElementById('infinite-scroll-test-manager')! as HTMLSelectElement;
+  const selectContext = document.getElementById('infinite-scroll-test-context')! as HTMLSelectElement;
+  const inputMax = document.getElementById('infinite-scroll-test-max')! as HTMLInputElement;
 
-  var managers = {
+  const managers: Record<'row' | 'col-3', InfiniteScrollManager> = {
     row: InfiniteScroll.basicManager(48, 10),
     'col-3': {
-      getHeightByIndex: function (_index) {
+      getHeightByIndex: () => {
         return 72;
       },
-      getMinOffsetByIndex: function (index) {
+      getMinOffsetByIndex: (index: number) => {
         return Math.floor(index / 3) * 72;
       },
-      getMaxOffsetByIndex: function (index) {
+      getMaxOffsetByIndex: (index: number) => {
         return (Math.floor(index / 3) + 1) * 72;
       },
-      getMinIndexByOffset: function (offset) {
+      getMinIndexByOffset: (offset: number) => {
         return Math.floor(offset / 72 - 10) * 3;
       },
-      getMaxIndexByOffset: function (offset) {
+      getMaxIndexByOffset: (offset: number) => {
         return Math.ceil(offset / 72 + 10) * 3 + 3;
       }
     }
   };
-  function render(element, item, _index) {
+  function render(element: HTMLElement, item: Data) {
     element.innerHTML = '' +
     '<div style="box-sizing: border-box; width: 100%; height: 100%; border: 3px solid #BBFF88; border-radius: 24px;">' +
       '<div>' +
@@ -36,37 +41,39 @@ window.addEventListener('DOMContentLoaded', function () {
     '</div>' +
     '';
   }
-  var renderers = {
-    row: Object.assign({}, InfiniteScroll.defaultRenderer, {
-      updateOffset: function (element, offset, height, _index) {
+  const renderers: Record<'row' | 'col-3', InfiniteScrollRenderer<Data, any>> = {
+    row: {
+      ...InfiniteScroll.defaultRenderer,
+      updateOffset: function (element, offset, height) {
         element.style.top = offset + 'px';
         element.style.height = height + 'px';
         element.style.left = '';
         element.style.width = '100%';
       },
-      render: render
-    }),
-    'col-3': Object.assign({}, InfiniteScroll.defaultRenderer, {
+      render,
+    },
+    'col-3': {
+      ...InfiniteScroll.defaultRenderer,
       updateOffset: function (element, offset, height, index) {
         element.style.top = offset + 'px';
         element.style.height = height + 'px';
         element.style.left = (index % 3) * 33 + '%';
         element.style.width = '33%';
       },
-      render: render
-    })
+      render,
+    },
   };
 
-  function getData(index, context) {
+  function getData(index: number, context: any): Data {
     return {
       index: index,
       text: context[0]
     };
   }
 
-  function dataLoader(addData, cursor, context, count) {
+  function dataLoader(addData: (result: { data: Data[], cursor: number, end: boolean }) => void, cursor: number, context: any, count: number) {
     count = count || 10;
-    var END = context[1];
+    const END = context[1];
     setTimeout(function () {
       count = Math.min(END - cursor, count);
       addData({
@@ -87,14 +94,14 @@ window.addEventListener('DOMContentLoaded', function () {
   function updateContext() {
     var newContext = getContext();
     if (newContext) {
-      InfiniteScroll.getInstance(container).setContext(newContext, [], 0);
+      InfiniteScroll.getInstance(container)!.setContext(newContext, [], 0);
     }
   }
 
   InfiniteScroll.init({
     container: container,
     dataLoader: dataLoader,
-    renderer: renderers[selectManager.value],
+    renderer: renderers[selectManager.value as 'row' | 'col-3'],
     initialCursor: 0,
     initialContext: getContext(),
     manager: managers.row
@@ -104,9 +111,9 @@ window.addEventListener('DOMContentLoaded', function () {
   inputMax.addEventListener('change', updateContext);
 
   selectManager.addEventListener('change', function () {
-    InfiniteScroll.getInstance(container).setManagerAndRenderer(
-      managers[selectManager.value],
-      renderers[selectManager.value]
+    InfiniteScroll.getInstance(container)!.setManagerAndRenderer(
+      managers[selectManager.value as 'row' | 'col-3'],
+      renderers[selectManager.value as 'row' | 'col-3']
     );
   });
 });

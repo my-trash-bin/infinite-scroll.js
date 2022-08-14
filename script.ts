@@ -1,3 +1,5 @@
+import { InfiniteScroll } from "./infinite-scroll";
+
 window.addEventListener('DOMContentLoaded', function () {
   var container = document.getElementById('infinite-scroll-test-container');
   var selectManager = document.getElementById('infinite-scroll-test-manager');

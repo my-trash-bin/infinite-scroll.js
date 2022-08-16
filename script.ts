@@ -5,6 +5,8 @@ interface Data {
   text: string;
 }
 
+type Context = [string, number];
+
 window.addEventListener('DOMContentLoaded', function () {
   const container = document.getElementById('infinite-scroll-test-container')!;
   const selectManager = document.getElementById('infinite-scroll-test-manager')! as HTMLSelectElement;
@@ -41,7 +43,7 @@ window.addEventListener('DOMContentLoaded', function () {
     '</div>' +
     '';
   }
-  const renderers: Record<'row' | 'col-3', InfiniteScrollRenderer<Data, any>> = {
+  const renderers: Record<'row' | 'col-3', InfiniteScrollRenderer<Data, Context>> = {
     row: {
       ...InfiniteScroll.defaultRenderer,
       updateOffset: function (element, offset, height) {
@@ -64,14 +66,14 @@ window.addEventListener('DOMContentLoaded', function () {
     },
   };
 
-  function getData(index: number, context: any): Data {
+  function getData(index: number, context: Context): Data {
     return {
       index: index,
       text: context[0]
     };
   }
 
-  function dataLoader(addData: (result: { data: Data[], cursor: number, end: boolean }) => void, cursor: number, context: any, count: number) {
+  function dataLoader(addData: (result: { data: Data[], cursor: number, end: boolean }) => void, cursor: number, context: Context, count: number) {
     count = count || 10;
     const END = context[1];
     setTimeout(function () {
@@ -86,13 +88,13 @@ window.addEventListener('DOMContentLoaded', function () {
     }, 500);
   }
 
-  function getContext() {
-    var max = parseInt(inputMax.value, 10);
+  function getContext(): [string, number] | undefined {
+    const max = parseInt(inputMax.value, 10);
     if (!max) return undefined;
     return [selectContext.value, max];
   }
   function updateContext() {
-    var newContext = getContext();
+    const newContext = getContext();
     if (newContext) {
       InfiniteScroll.getInstance(container)!.setContext(newContext, [], 0);
     }
@@ -103,7 +105,7 @@ window.addEventListener('DOMContentLoaded', function () {
     dataLoader: dataLoader,
     renderer: renderers[selectManager.value as 'row' | 'col-3'],
     initialCursor: 0,
-    initialContext: getContext(),
+    initialContext: getContext()!,
     manager: managers.row
   });
 
